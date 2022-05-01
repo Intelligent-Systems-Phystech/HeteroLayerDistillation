@@ -15,7 +15,7 @@ class AdamHyperGradCalculator():
         """
         self.net = net
         self.v_net =  None # lazy 
-        self.w = list(self.net.parameters())
+        #self.w = list(self.net.parameters())
         self.w_loss = parameters_loss_function #data,model, h
         self.h_loss = hyperparameters_loss_function #x,y,model
         self.optimizer = optimizer
@@ -96,7 +96,7 @@ class AdamHyperGradCalculator():
         # calc unrolled loss
         loss = self.h_loss(val, self.v_net) # L_val(w`)
            
-        v_grads = torch.autograd.grad(loss,list(self.v_net.parameters()))
+        v_grads = torch.autograd.grad(loss,list(self.v_net.inference_parameters()))
         dw = v_grads
 
         hessian = self.compute_hessian(dw, trn)
@@ -122,21 +122,21 @@ class AdamHyperGradCalculator():
 
         # w+ = w + eps*dw`
         with torch.no_grad():
-            for p, d in zip(self.net.parameters(), dw):
+            for p, d in zip(self.net.inference_parameters(), dw):
                 p += eps * d
         loss = self.w_loss(trn, self.net, h)
         dalpha_pos = torch.autograd.grad(loss, h) # dalpha { L_trn(w+) }
 
         # w- = w - eps*dw`
         with torch.no_grad():
-            for p, d in zip(self.net.parameters(), dw):
+            for p, d in zip(self.net.inference_parameters(), dw):
                 p -= 2. * eps * d
         loss = self.w_loss(trn, self.net, h)
         dalpha_neg = torch.autograd.grad(loss, h) # dalpha { L_trn(w-) }
 
         # recover w
         with torch.no_grad():
-            for p, d in zip(self.net.parameters(), dw):
+            for p, d in zip(self.net.inference_parameters(), dw):
                 p += eps * d
 
         hessian = [(p-n) / (2.*eps) for p, n in zip(dalpha_pos, dalpha_neg)]
